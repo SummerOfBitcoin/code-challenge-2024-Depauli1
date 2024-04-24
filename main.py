@@ -43,15 +43,8 @@ def calculate_fee(transactions):
 def mine_block(transactions, difficulty_target):
     nonce = 0
     while True:
-        # Construct the block header with correct formatting
-        block_header = (
-            f"Version: 1\n"
-            f"Previous Block Hash: 0000000000000000000000000000000000000000000000000000000000000000\n"
-            f"Merkle Root: 0000000000000000000000000000000000000000000000000000000000000000\n"
-            f"Timestamp: {int(time.time())}\n"
-            f"Bits: {difficulty_target}\n"
-            f"Nonce: {nonce}\n"
-        )
+        # Simplified block header construction
+        block_header = f"Version: 1\nPrevious Block Hash: 0000000000000000000000000000000000000000000000000000000000000000\nMerkle Root: 0000000000000000000000000000000000000000000000000000000000000000\nTimestamp: {int(time.time())}\nBits: {difficulty_target}\nNonce: {nonce}\n"
         hash_result = hashlib.sha256(block_header.encode()).hexdigest()
         # Check if the hash meets the difficulty target
         if hash_result < difficulty_target:
