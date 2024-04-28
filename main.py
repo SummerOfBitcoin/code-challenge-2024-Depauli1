@@ -1,75 +1,81 @@
-import os
-import json
 import hashlib
+import json
+import os
 import time
 
 
-def read_transactions(directory):
-    transactions = []
-    try:
-        for filename in os.listdir(directory):
-            if filename.endswith(".json"):
-                with open(os.path.join(directory, filename), "r") as file:
-                    transactions.append(json.load(file))
-    except Exception as e:
-        print(f"Error reading the transactions: {e}")
-    return transactions
+class Transaction:
+    def __init__(self, data):
+        self.data = data
+
+    def is_valid(self):
+        required_fields = ["version", "locktime", "vin", "vout"]
+        if not all(field in self.data for field in required_fields):
+            return False
+        # Check if each 'vin' entry has a 'txid' field
+        for vin in self.data.get("vin", []):
+            if "txid" not in vin:
+                return False
+        return True
 
 
-def validate_transactions(transactions):
-    valid_transactions = []
-    for tx in transactions:
-        if "vin" in tx and "vout" in tx and not tx["vin"][0]["is_coinbase"]:
-            valid_transactions.append(tx)
-    return valid_transactions
+class Block:
+    def __init__(self, transactions):
+        self.transactions = transactions
+        self.previous_hash = (
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        )
+        self.nonce = 0
+        self.timestamp = int(time.time())
+        self.difficulty_target = (
+            "0000ffff0000000000000000000000000000000000000000000000000000000"
+        )
 
+    def calculate_hash(self):
+        header = f"{self.previous_hash}{self.timestamp}{self.nonce}"
+        assert len(header) <= 80, "Block header exceeds 80 bytes"
+        return hashlib.sha256(header.encode()).hexdigest()
 
-def calculate_fee(transactions):
-    total_fee = 0
-    for tx in transactions:
-        for vout in tx["vout"]:
-            total_fee += vout["value"] * 0.01
-    return total_fee
-
-
-def mine_block(transactions, difficulty_target):
-    nonce = 0
-    while True:
-        block_header = f"Version: 1\nPrevious Block Hash: 0000000000000000000000000000000000000000000000000000000000000000\nMerkle Root: 0000000000000000000000000000000000000000000000000000000000000000\nTimestamp: {int(time.time())}\nBits: {difficulty_target}\nNonce: {nonce}\n"
-        hash_result = hashlib.sha256(block_header.encode()).hexdigest()
-        if hash_result < difficulty_target:
-            return nonce, hash_result
-        nonce += 1
-
-
-def write_output(nonce, hash_result, transactions, difficulty_target):
-    if nonce is None or hash_result is None or transactions is None:
-        print("Error: Nonce, hash_result, or transactions is None.")
-        return
-
-    total_fee = calculate_fee(transactions)
-    block_space_utilization = len(transactions)
-
-    try:
-        with open("output.txt", "w") as file:
-            file.write(
-                f"Block Header:\nVersion: 1\nPrevious Block Hash: 0000000000000000000000000000000000000000000000000000000000000000\nMerkle Root: 0000000000000000000000000000000000000000000000000000000000000000\nTimestamp: {int(time.time())}\nBits: {difficulty_target}\nNonce: {nonce}\n"
-            )
-            file.write(f"Total Fee Collected: {total_fee}\n")
-            file.write(f"Block Space Utilization: {block_space_utilization}\n")
-            file.write("Coinbase Transaction\n")
-            for tx in transactions:
-                file.write(f"{tx['vin'][0]['txid']}\n")
-    except Exception as e:
-        print(f"Error writing to output.txt: {e}")
+    def mine_block(self, difficulty):
+        target = "0" * difficulty
+        while self.calculate_hash()[:difficulty] != target:
+            self.nonce += 1
 
 
 def main():
-    transactions = read_transactions("mempool")
-    valid_transactions = validate_transactions(transactions)
-    difficulty_target = "0000ffff00000000000000000000000000000000000000000000000000000000"  # Define difficulty target here
-    nonce, hash_result = mine_block(valid_transactions, difficulty_target)
-    write_output(nonce, hash_result, valid_transactions, difficulty_target)
+    transactions = []
+    try:
+        for filename in os.listdir("mempool"):
+            with open(f"mempool/{filename}", "r") as file:
+                data = json.load(file)
+                tx = Transaction(data)
+                if tx.is_valid():
+                    transactions.append(tx)
+    except FileNotFoundError:
+        print("Error: The 'mempool' directory does not exist.")
+        return
+    except json.JSONDecodeError:
+        print("Error: A file in the 'mempool' directory could not be decoded as JSON.")
+        return
+
+    block = Block(transactions)
+    try:
+        block.mine_block(4)  # Assuming a difficulty of 4 for simplicity
+    except Exception as e:
+        print(f"Error: An error occurred while mining the block: {e}")
+        return
+
+    try:
+        with open("output.txt", "w") as file:
+            file.write(f"Block Header: {block.calculate_hash()}\n")
+            file.write("Coinbase Transaction: Simplified for demonstration\n")
+            for tx in block.transactions:
+                if tx.is_valid():
+                    # Assuming the first 'vin' entry's 'txid' is the one we're interested in
+                    txid = tx.data["vin"][0]["txid"] if tx.data["vin"] else "N/A"
+                    file.write(f"Transaction ID: {txid}\n")
+    except IOError:
+        print("Error: Unable to write to 'output.txt'.")
 
 
 if __name__ == "__main__":
