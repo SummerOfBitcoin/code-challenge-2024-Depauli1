@@ -11,7 +11,7 @@ The design approach for this block construction program was centered around simu
 
 The implementation of the block construction program was structured into several key functions, each responsible for a specific part of the process:
 
-Pseudo Code
+The Pseudo Code
 
 1. Read transactions from the mempool directory.
 2. Validate transactions by checking for necessary fields.
