@@ -54,4 +54,3 @@ Potential areas for future improvement include:
 
 - [Bitcoin Whitepaper](https://bitcoin.org/bitcoin.pdf)
 - [Blockchain Basics](https://www.investopedia.com/terms/b/blockchain.asp)
-- [Python Documentation](https://docs.python.org/3/)
